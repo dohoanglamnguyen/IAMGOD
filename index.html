@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>I AM GOD</title>
     <link rel="stylesheet" href="https://use.typekit.net/nwi7npo.css" />
     <link rel="stylesheet" href="styles.css" />
@@ -291,11 +294,86 @@
     <script src="glitch-cinematic.js"></script>
     <script>
       (function () {
+        var phone = document.querySelector(".phone");
+        if (!phone) return;
+
+        var DESIGN_W = 402;
+        var DESIGN_H = 874;
+        var DESIGN_FONT = 11.75;
+
+        function syncPhoneFrame() {
+          var w = phone.clientWidth;
+          var h = phone.clientHeight;
+          if (!w || !h) return;
+
+          var scaleW = w / DESIGN_W;
+          var fontPx = Math.max(10, Math.min(DESIGN_FONT, DESIGN_FONT * scaleW));
+          phone.style.setProperty("--app-font-s", fontPx.toFixed(3) + "px");
+          phone.style.setProperty("--frame-h", h + "px");
+          phone.style.setProperty("--thumb-hero-mt", h * 0.05 + "px");
+          phone.style.setProperty(
+            "--thumb-img-w",
+            Math.min(w * 0.9, 358) + "px"
+          );
+        }
+
+        function scheduleSync() {
+          window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(syncPhoneFrame);
+          });
+        }
+
+        if (typeof ResizeObserver !== "undefined") {
+          var ro = new ResizeObserver(scheduleSync);
+          ro.observe(phone);
+        }
+        window.addEventListener("resize", scheduleSync);
+        window.addEventListener("orientationchange", scheduleSync);
+        window.addEventListener("load", scheduleSync);
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(scheduleSync);
+        }
+        scheduleSync();
+      })();
+    </script>
+    <script>
+      (function () {
         var intro = document.querySelector("[data-intro-stack]");
         if (intro) {
+          var INTRO_MS = 3200;
+          var introSafetyTimer = null;
+
+          function clearIntroSafety() {
+            if (introSafetyTimer) {
+              clearTimeout(introSafetyTimer);
+              introSafetyTimer = null;
+            }
+          }
+
           function finishIntro() {
+            clearIntroSafety();
             intro.classList.add("intro-stack--done");
             intro.setAttribute("aria-hidden", "true");
+          }
+
+          function armIntroSafety() {
+            clearIntroSafety();
+            introSafetyTimer = setTimeout(function () {
+              if (!intro.classList.contains("intro-stack--done")) {
+                finishIntro();
+              }
+            }, INTRO_MS + 250);
+          }
+
+          function bindIntroEnd(restart) {
+            var expectedName = restart ? "introStackFadeIn" : "introStackFadeNoIn";
+            function onIntroEnd(ev) {
+              if (ev.target !== intro) return;
+              if (ev.animationName !== expectedName) return;
+              finishIntro();
+            }
+            intro.addEventListener("animationend", onIntroEnd, { once: true });
+            armIntroSafety();
           }
 
           function playIntro(restart) {
@@ -314,26 +392,10 @@
 
             if (restart) {
               intro.classList.add("intro-stack--fade-in");
-              intro.addEventListener(
-                "animationend",
-                function (ev) {
-                  if (ev.target !== intro) return;
-                  if (ev.animationName !== "introStackFadeIn") return;
-                  finishIntro();
-                },
-                { once: true }
-              );
+              bindIntroEnd(true);
             } else {
               intro.classList.add("intro-stack--fade-out");
-              intro.addEventListener(
-                "animationend",
-                function (ev) {
-                  if (ev.target !== intro) return;
-                  if (ev.animationName !== "introStackFadeNoIn") return;
-                  finishIntro();
-                },
-                { once: true }
-              );
+              bindIntroEnd(false);
             }
           }
 
@@ -372,6 +434,25 @@
           }
 
           playIntro(false);
+
+          document.addEventListener("visibilitychange", function () {
+            if (
+              document.visibilityState === "visible" &&
+              !intro.classList.contains("intro-stack--done")
+            ) {
+              armIntroSafety();
+            }
+          });
+
+          window.addEventListener("pageshow", function (ev) {
+            if (
+              ev.persisted &&
+              intro &&
+              !intro.classList.contains("intro-stack--done")
+            ) {
+              armIntroSafety();
+            }
+          });
 
           var thumbs = document.querySelectorAll(".thumb-img");
           var page3Layer = document.querySelector("[data-page3-layer]");

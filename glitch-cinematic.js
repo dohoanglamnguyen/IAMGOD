@@ -1,7 +1,24 @@
 (function () {
   var glitchActive = false;
 
+  function canRunCinematicGlitch() {
+    try {
+      if (!window.html2canvas) return false;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return false;
+      }
+      /* html2canvas is heavy and unreliable on real phones — DevTools often hides this */
+      if (window.matchMedia("(pointer: coarse)").matches) return false;
+      if (window.matchMedia("(hover: none)").matches) return false;
+      if (window.innerWidth <= 820) return false;
+    } catch (err) {
+      return false;
+    }
+    return true;
+  }
+
   function triggerCinematicGlitch() {
+    if (!canRunCinematicGlitch()) return;
     if (glitchActive) return;
     glitchActive = true;
 
